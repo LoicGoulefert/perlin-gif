@@ -1,7 +1,10 @@
 import math
+import argparse
+
 import imageio
 import numpy as np
 from noise import snoise2, snoise3, snoise4
+from pygifsicle import optimize
 
 
 def simplex_noise3d(shape, scale, octaves=1):
@@ -15,6 +18,7 @@ def simplex_noise3d(shape, scale, octaves=1):
 
 
 def simplex_noise4d(shape, scale, radius=1.5, octaves=1):
+    # offset = np.random.rand()
     img = np.zeros(shape)
     for i in range(shape[2]):
         for x in range(shape[0]):
@@ -36,7 +40,7 @@ def make_3d_gif(N, shape, scale, frames, octaves=1, fps=30, output='perlin3d.gif
     imageio.mimsave(output, images, **kwargs)
 
 
-def make_4d_gif(N, shape, scale, frames, octaves=1, radius=1.5, fps=30, output='perlin3d.gif'):
+def make_4d_gif(N, shape, scale, frames, octaves=1, radius=1.5, fps=30, output='perlin4d.gif'):
     images = simplex_noise4d(shape, scale, octaves=octaves, radius=radius)
     images = images.astype('uint8')
     images = images.transpose(2, 0, 1)
@@ -46,11 +50,26 @@ def make_4d_gif(N, shape, scale, frames, octaves=1, radius=1.5, fps=30, output='
 
  
 if __name__ == "__main__":
-    N = 512
-    frames = 90
-    shape = (N, N, frames)
-    scale4D = (0.005, 0.005)
-    octaves = 1
-    radius = 0.5
+    # parser = argparse.ArgumentParser(description="CLI tool to create perlin noise gifs")
+    # parser.add_argument("-n",  metavar="dimension", type=int, help="specify the gif dimension")
+    # parser.add_argument("-fps", metavar="framerate", type=int, help="specify the framerate")
+    # parser.add_argument("-f", metavar="frames",  type=int, help="how many frames in the gif")
+    # parser.add_argument("-sx", "--scale-x", metavar="scalex", type=float, help="specify the x scale [0, 1]")
+    # parser.add_argument("-sy", "--scale-y", metavar="scaley", type=float, help="specify the y scale [0, 1]")
+    # parser.add_argument("-o", "--octaves", metavar="octaves", type=int, help="how many octaves to use")
 
-    make_4d_gif(N, shape, scale4D, frames, octaves=octaves, radius=radius)
+    # args = parser.parse_args()
+
+    N = 512
+    frames = 60
+    shape = (N, N, frames)
+    scale4D = (0.008, 0.005)
+    octaves = 1
+    radius = 1
+    compress = True
+    output = "perlin4d-compressed.gif"
+
+    make_4d_gif(N, shape, scale4D, frames, octaves=octaves, radius=radius, output=output)
+
+    if compress:
+        optimize(output)
