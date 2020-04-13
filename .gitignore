@@ -130,3 +130,12 @@ dmypy.json
 
 # gifs output
 *.gif
+
+# IDE
+.vscode/
+
+# env
+perlin-env/
+
+# Misc
+numpy-perlin.py
