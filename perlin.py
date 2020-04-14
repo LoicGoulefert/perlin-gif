@@ -6,7 +6,7 @@ import numpy as np
 from noise import snoise2, snoise3, snoise4
 from pygifsicle import optimize
 
-# from postprocessing import Quantize, Pipeline
+from postprocessing import Quantize, Pipeline
 
 
 def _simplex_noise3d(shape, scale, octaves):
@@ -46,6 +46,7 @@ class PerlinGif():
         self.radius = kwargs["r"]
         self.compress = kwargs["compress"]
         self.output_file = kwargs["out"]
+        self.pipeline = kwargs["pipeline"]
         self.shape = (*self.n, self.frames)
     
     def _to_gif(self):
@@ -70,6 +71,10 @@ class PerlinGif():
         else:
             self.images = self._make_4d_gif()
         
+        if not self.pipeline.is_empty():
+            print("Running pipeline")
+            self.images = self.pipeline.run(self.images)
+        
         self._to_gif()
         if self.compress:
             optimize(self.output_file)
@@ -87,8 +92,11 @@ if __name__ == "__main__":
     parser.add_argument("-c", "--compress", action='store_true', help="set this flag to enable gif compression", default=False)
     parser.add_argument("-out", type=str, help="output file name (will be created)", default="out.gif")
 
-    args = parser.parse_args()
+    args = vars(parser.parse_args())
 
-    pg = PerlinGif(**vars(args))
+    # Creating post-processing pipeline
+    pipeline = Pipeline(Quantize(bins=5), Quantize(bins=2))
+    args['pipeline'] = pipeline
+
+    pg = PerlinGif(**args)
     pg.render()
-    
