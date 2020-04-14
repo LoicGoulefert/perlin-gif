@@ -6,8 +6,10 @@ import numpy as np
 from noise import snoise2, snoise3, snoise4
 from pygifsicle import optimize
 
+# from postprocessing import Quantize, Pipeline
 
-def _simplex_noise3d(shape, scale, octaves=1):
+
+def _simplex_noise3d(shape, scale, octaves):
     img = np.zeros(shape)
     for x in range(shape[0]):
         for y in range(shape[1]):
@@ -19,7 +21,7 @@ def _simplex_noise3d(shape, scale, octaves=1):
     return img
 
 
-def _simplex_noise4d(shape, scale, radius=1.5, octaves=1):
+def _simplex_noise4d(shape, scale, octaves, radius):
     img = np.zeros(shape)
     for i in range(shape[2]):
         for x in range(shape[0]):
@@ -33,21 +35,44 @@ def _simplex_noise4d(shape, scale, radius=1.5, octaves=1):
     return img
 
 
-def _to_gif(images, output, fps):
-    kwargs = {'duration': 1 / fps}
-    imageio.mimsave(output, images, **kwargs)
+class PerlinGif():
+    def __init__(self, **kwargs):
+        self.noise_dim = kwargs["d"]
+        self.n = kwargs["n"]
+        self.fps = kwargs["fps"]
+        self.frames = kwargs["frames"]
+        self.scale = kwargs["s"]
+        self.octaves = kwargs["o"]
+        self.radius = kwargs["r"]
+        self.compress = kwargs["compress"]
+        self.output_file = kwargs["out"]
+        self.shape = (*self.n, self.frames)
+    
+    def _to_gif(self):
+        kwargs = {'duration': 1 / self.fps}
+        imageio.mimsave(self.output_file, self.images, **kwargs)
+    
+    def _make_3d_gif(self):
+        images = _simplex_noise3d(self.shape, self.scale, self.octaves)
+        images = images.transpose(2, 0, 1)
 
+        return images
+        
+    def _make_4d_gif(self):
+        images = _simplex_noise4d(self.shape, self.scale, self.octaves, self.radius)
+        images = images.transpose(2, 0, 1)
+    
+        return images
 
-def make_3d_gif(N, shape, scale, frames, octaves=1, fps=30, output='perlin3d.gif'):
-    images = _simplex_noise3d(shape, scale, octaves=octaves)
-    images = images.transpose(2, 0, 1)
-    _to_gif(images, output, fps)
-
-
-def make_4d_gif(N, shape, scale, frames, octaves=1, radius=1.5, fps=30, output='perlin4d.gif'):
-    images = _simplex_noise4d(shape, scale, octaves=octaves, radius=radius)
-    images = images.transpose(2, 0, 1)
-    _to_gif(images, output, fps)
+    def render(self):
+        if self.noise_dim == 3:
+            self.images = self._make_3d_gif()
+        else:
+            self.images = self._make_4d_gif()
+        
+        self._to_gif()
+        if self.compress:
+            optimize(self.output_file)
 
  
 if __name__ == "__main__":
@@ -58,26 +83,12 @@ if __name__ == "__main__":
     parser.add_argument("-frames", type=int, help="how many frames in the gif", default=30)
     parser.add_argument("-s", type=float, nargs='+', help="specify the scale (tuple of floats in the [0, 1] range)", default=(0.01, 0.01))
     parser.add_argument("-o", type=int, choices=[1, 2, 3, 4], help="how many octaves to use", default=1)
-    parser.add_argument("-r", type=float, help="radius (for 4D noise)", default=1)
+    parser.add_argument("-r", type=float, help="radius (for 4D noise)", default=0.1)
     parser.add_argument("-c", "--compress", action='store_true', help="set this flag to enable gif compression", default=False)
     parser.add_argument("-out", type=str, help="output file name (will be created)", default="out.gif")
+
     args = parser.parse_args()
 
-    noise_dim = args.d
-    N = args.n
-    frames = args.frames
-    fps = args.fps
-    shape = (*N, frames)
-    scale = args.s
-    octaves = args.o
-    radius = args.r
-    compress = args.compress
-    output = args.out
-
-    if noise_dim == 3:
-        make_3d_gif(N, shape, scale, frames, octaves=octaves, fps=fps, output=output)
-    else:
-        make_4d_gif(N, shape, scale, frames, octaves=octaves, fps=fps, radius=radius, output=output)
-
-    if compress:
-        optimize(output)
+    pg = PerlinGif(**vars(args))
+    pg.render()
+    
