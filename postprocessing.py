@@ -18,8 +18,21 @@ class Quantize(AbstractProcessing):
         w = images.max() / self.bins
 
         for i in range(images.shape[0]):
-            images[i, :, :] = images[i, :, :] / self.bins * w
-        
+            images[i, :, :] -= (images[i, :, :] - (images[i, :, :] // w) * w).astype('uint8')
+
+        return images
+
+
+class FromFunction(AbstractProcessing):
+    """ Not tested """
+    def __init__(self, fn=None, **fn_kwargs):
+        self.fn = fn
+        self.fn_kwargs = fn_kwargs
+    
+    def apply(self, images):
+        for i in range(images.shape[0]):
+            images[i, :, :] = self.fn(images[i, :, :])
+
         return images
 
 
