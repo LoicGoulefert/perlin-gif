@@ -6,7 +6,7 @@ import numpy as np
 from noise import snoise2, snoise3, snoise4
 from pygifsicle import optimize
 
-from postprocessing import Quantize, Pipeline
+from postprocessing import Quantize, Pipeline, FromFunction
 
 
 def _simplex_noise3d(shape, scale, octaves):
@@ -24,10 +24,10 @@ def _simplex_noise3d(shape, scale, octaves):
 def _simplex_noise4d(shape, scale, octaves, radius):
     img = np.zeros(shape)
     for i in range(shape[2]):
+        cos_value = radius * math.cos(2 * math.pi * (i / shape[2]))
+        sin_value = radius * math.sin(2 * math.pi * (i / shape[2]))
         for x in range(shape[0]):
             for y in range(shape[1]):
-                cos_value = radius * math.cos(2 * math.pi * (i / shape[2]))
-                sin_value = radius * math.sin(2 * math.pi * (i / shape[2]))
                 img[x, y, i] = snoise4(x * scale[0], y * scale[1], cos_value, sin_value)
     
     img = ((img - img.min()) * (1 / (img.max() - img.min()) * 255)).astype('uint8')
@@ -95,7 +95,8 @@ if __name__ == "__main__":
     args = vars(parser.parse_args())
 
     # Creating post-processing pipeline
-    pipeline = Pipeline(Quantize(bins=5), Quantize(bins=2))
+    pipeline = Pipeline(Quantize(bins=8))
+    # pipeline = Pipeline()
     args['pipeline'] = pipeline
 
     pg = PerlinGif(**args)
