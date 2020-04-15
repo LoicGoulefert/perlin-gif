@@ -9,6 +9,9 @@ sudo apt-get install gifsicle
 python3 -m venv env
 source env/bin/activate
 
+# Upgrade pip
+pip install -U pip
+
 git clone https://github.com/LoicGoulefert/perlin-gif.git
 
 cd perlin-gif
