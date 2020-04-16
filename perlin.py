@@ -6,29 +6,41 @@ import numpy as np
 from noise import snoise2, snoise3, snoise4
 from pygifsicle import optimize
 
-from postprocessing import Quantize, Pipeline, FromFunction
+from postprocessing import Quantize, Pipeline, FromFunction, AdjustBrightness
 
 
-def _simplex_noise3d(shape, scale, octaves):
+def _simplex_noise3d(shape, scale, octaves, random):
     img = np.zeros(shape)
+
+    if random:
+        offset = np.random.rand() * 100
+    else:
+        offset = 0
+    
     for x in range(shape[0]):
         for y in range(shape[1]):
             for z in range(shape[2]):
-                img[x, y, z] = snoise3(x * scale[0], y * scale[1], z * scale[2], octaves=octaves)
+                img[x, y, z] = snoise3(x * scale[0] + offset, y * scale[1] + offset, z * scale[2], octaves=octaves)
     
     img = ((img - img.min()) * (1 / (img.max() - img.min()) * 255)).astype('uint8')
     
     return img
 
 
-def _simplex_noise4d(shape, scale, octaves, radius):
+def _simplex_noise4d(shape, scale, octaves, radius, random):
     img = np.zeros(shape)
+
+    if random:
+        offset = np.random.rand() * 100
+    else:
+        offset = 0
+
     for i in range(shape[2]):
         cos_value = radius * math.cos(2 * math.pi * (i / shape[2]))
         sin_value = radius * math.sin(2 * math.pi * (i / shape[2]))
         for x in range(shape[0]):
             for y in range(shape[1]):
-                img[x, y, i] = snoise4(x * scale[0], y * scale[1], cos_value, sin_value)
+                img[x, y, i] = snoise4(x * scale[0] + offset, y * scale[1] + offset, cos_value, sin_value)
     
     img = ((img - img.min()) * (1 / (img.max() - img.min()) * 255)).astype('uint8')
     
@@ -47,6 +59,7 @@ class PerlinGif():
         self.compress = kwargs["compress"]
         self.output_file = kwargs["out"]
         self.pipeline = kwargs["pipeline"]
+        self.random = kwargs["R"]
         self.shape = (*self.n, self.frames)
     
     def _to_gif(self):
@@ -54,13 +67,13 @@ class PerlinGif():
         imageio.mimsave(self.output_file, self.images, **kwargs)
     
     def _make_3d_gif(self):
-        images = _simplex_noise3d(self.shape, self.scale, self.octaves)
+        images = _simplex_noise3d(self.shape, self.scale, self.octaves, self.random)
         images = images.transpose(2, 0, 1)
 
         return images
         
     def _make_4d_gif(self):
-        images = _simplex_noise4d(self.shape, self.scale, self.octaves, self.radius)
+        images = _simplex_noise4d(self.shape, self.scale, self.octaves, self.radius, self.random)
         images = images.transpose(2, 0, 1)
     
         return images
@@ -89,15 +102,20 @@ if __name__ == "__main__":
     parser.add_argument("-s", type=float, nargs='+', help="specify the scale (tuple of floats in the [0, 1] range)", default=(0.01, 0.01))
     parser.add_argument("-o", type=int, choices=[1, 2, 3, 4], help="how many octaves to use", default=1)
     parser.add_argument("-r", type=float, help="radius (for 4D noise)", default=0.1)
-    parser.add_argument("-c", "--compress", action='store_true', help="set this flag to enable gif compression", default=False)
+    parser.add_argument("-c", "--compress", action="store_true", help="set this flag to enable gif compression", default=False)
     parser.add_argument("-out", type=str, help="output file name (will be created)", default="out.gif")
+    parser.add_argument("-R", action="store_true", help="set this flag to use a random starting point in the noise function", default=False)
 
     args = vars(parser.parse_args())
 
-    # Creating post-processing pipeline
-    pipeline = Pipeline(Quantize(bins=8))
-    # pipeline = Pipeline()
+    # Sanity check
+    if args['d'] == 3:
+        assert len(args['s']) == 3, "3 dimension scale needed for 3D noise. Got {} ({}D).".format(args['s'], len(args['s']))
+
+    # Create post-processing pipeline
+    pipeline = Pipeline(AdjustBrightness(gamma=0.4), Quantize(bins=16))
     args['pipeline'] = pipeline
 
+    # Render gif
     pg = PerlinGif(**args)
     pg.render()
