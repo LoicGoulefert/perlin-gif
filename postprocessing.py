@@ -18,7 +18,10 @@ class Quantize(AbstractProcessing):
     def apply(self, images):
         w = images.max() / self.bins
 
-        return (images - (images // w) * w).astype('uint8')
+        for i in range(images.shape[0]):
+            images[i, :, :] -= (images[i, :, :] - (images[i, :, :] // w) * w).astype('uint8')
+
+        return images
 
 
 class AdjustBrightness(AbstractProcessing):
