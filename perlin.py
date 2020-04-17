@@ -6,7 +6,7 @@ import numpy as np
 from noise import snoise2, snoise3, snoise4
 from pygifsicle import optimize
 
-from postprocessing import Quantize, Pipeline, FromFunction, AdjustBrightness
+from postprocessing import Quantize, Pipeline, FromFunction, AdjustBrightness, Mask, circular_mask
 
 
 def _simplex_noise3d(shape, scale, octaves, random):
@@ -65,7 +65,9 @@ class PerlinGif():
     def _to_gif(self):
         kwargs = {'duration': 1 / self.fps}
         imageio.mimsave(self.output_file, self.images, **kwargs)
-    
+        if self.compress:
+            optimize(self.output_file)
+
     def _make_3d_gif(self):
         images = _simplex_noise3d(self.shape, self.scale, self.octaves, self.random)
         images = images.transpose(2, 0, 1)
@@ -89,10 +91,8 @@ class PerlinGif():
             self.images = self.pipeline.run(self.images)
         
         self._to_gif()
-        if self.compress:
-            optimize(self.output_file)
 
- 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="CLI tool to create perlin noise gifs")
     parser.add_argument("-d", type=int, choices=[3, 4], help="noise dimension", default=4)
@@ -113,7 +113,9 @@ if __name__ == "__main__":
         assert len(args['s']) == 3, "3 dimension scale needed for 3D noise. Got {} ({}D).".format(args['s'], len(args['s']))
 
     # Create post-processing pipeline
-    pipeline = Pipeline(AdjustBrightness(gamma=0.4), Quantize(bins=16))
+    mask = circular_mask(args['n'])
+    pipeline = Pipeline(AdjustBrightness(gamma=0.4), Quantize(bins=16), Mask(mask))
+    # pipeline = Pipeline()
     args['pipeline'] = pipeline
 
     # Render gif
