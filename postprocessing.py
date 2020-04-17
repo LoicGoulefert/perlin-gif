@@ -1,6 +1,14 @@
 import numpy as np
 from abc import ABC, abstractmethod
-from sklearn.cluster import KMeans
+from skimage.draw import circle
+
+
+def circular_mask(shape):
+    mask = np.zeros(shape, dtype=np.uint8)
+    rr, cc = circle(shape[0]/2, shape[1]/2, radius=shape[0] / 2, shape=shape)
+    mask[rr, cc] = 1
+    
+    return mask
 
 
 class AbstractProcessing(ABC):
@@ -35,6 +43,17 @@ class AdjustBrightness(AbstractProcessing):
         # Convert back to grayscale [0, 255]
         images = ((images - images.min()) * (1 / (images.max() - images.min()) * 255)).astype('uint8')
 
+        return images
+
+
+class Mask(AbstractProcessing):
+    def __init__(self, mask):
+        self.mask = mask
+    
+    def apply(self, images):
+        for i in range(images.shape[0]):
+            images[i, :, :] *= self.mask
+        
         return images
 
 
