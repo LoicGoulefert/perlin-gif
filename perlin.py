@@ -5,8 +5,7 @@ import imageio
 import numpy as np
 from noise import snoise2, snoise3, snoise4
 from pygifsicle import optimize
-
-from postprocessing import Quantize, Pipeline, FromFunction, AdjustBrightness, Mask, circular_mask
+import matplotlib.pyplot as plt
 
 
 def _simplex_noise3d(shape, scale, octaves, random):
@@ -93,31 +92,55 @@ class PerlinGif():
         self._to_gif()
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="CLI tool to create perlin noise gifs")
-    parser.add_argument("-d", type=int, choices=[3, 4], help="noise dimension", default=4)
-    parser.add_argument("-n", type=int, nargs='+', help="specify the gif dimension", default=(256, 256))
-    parser.add_argument("-fps", type=int, help="specify the framerate", default=30)
-    parser.add_argument("-frames", type=int, help="how many frames in the gif", default=30)
-    parser.add_argument("-s", type=float, nargs='+', help="specify the scale (tuple of floats in the [0, 1] range)", default=(0.01, 0.01))
-    parser.add_argument("-o", type=int, choices=[1, 2, 3, 4], help="how many octaves to use", default=1)
-    parser.add_argument("-r", type=float, help="radius (for 4D noise)", default=0.1)
-    parser.add_argument("-c", "--compress", action="store_true", help="set this flag to enable gif compression", default=False)
-    parser.add_argument("-out", type=str, help="output file name (will be created)", default="out.gif")
-    parser.add_argument("-R", action="store_true", help="set this flag to use a random starting point in the noise function", default=False)
+class PerlinFlowField():
+    def __init__(self, **kwargs):
+        self.noise_dim = kwargs["d"]
+        self.n = kwargs["n"]
+        self.fps = kwargs["fps"]
+        self.frames = kwargs["frames"]
+        self.scale = kwargs["s"]
+        self.octaves = kwargs["o"]
+        self.radius = kwargs["r"]
+        self.compress = kwargs["compress"]
+        self.output_file = kwargs["out"]
+        self.pipeline = kwargs["pipeline"]
+        self.random = kwargs["R"]
+        self.shape = (*self.n, self.frames)
 
-    args = vars(parser.parse_args())
+    def flow_field(self):
+        # generate vector field
+        flow_field = np.zeros((*shape, 2)) # if 256, 256, 30 -> 256, 256, 30, 2
+        radius = 0.1
+        scale = (0.1, 0.1)
 
-    # Sanity check
-    if args['d'] == 3:
-        assert len(args['s']) == 3, "3 dimension scale needed for 3D noise. Got {} ({}D).".format(args['s'], len(args['s']))
+        for i in range(shape[2]):
+            cos_value = self.radius * math.cos(2 * math.pi * (i / shape[2]))
+            sin_value = self.radius * math.sin(2 * math.pi * (i / shape[2]))
+            for x in range(shape[0]):
+                for y in range(shape[1]):
+                    angle = snoise4(x * self.scale[0], y * self.scale[1], cos_value, sin_value)
+                    flow_field[x, y, i, 0] = np.cos(angle) * 10
+                    flow_field[x, y, i, 1] = np.sin(angle) * 10
+       
+        # x, y = np.meshgrid(np.arange(0, shape[0]*scale[0], scale[0]), np.arange(0, shape[1]*scale[1], scale[1]))
+        # u, v = flow_field[:, :, 0, 0], flow_field[:, :, 0, 1]
 
-    # Create post-processing pipeline
-    mask = circular_mask(args['n'])
-    pipeline = Pipeline(AdjustBrightness(gamma=0.4), Quantize(bins=16), Mask(mask))
-    # pipeline = Pipeline()
-    args['pipeline'] = pipeline
+        # figs, axs = plt.subplots(2, 2)
+        # axs[0][0].quiver(x, y, flow_field[:, :, 0, 0] * -1, flow_field[:, :, 0, 1] * -1)
+        # axs[0][1].quiver(x, y, flow_field[:, :, 1, 0], flow_field[:, :, 1, 1])
+        # axs[1][0].quiver(x, y, flow_field[:, :, 2, 0], flow_field[:, :, 2, 1])
+        # axs[1][1].quiver(x, y, flow_field[:, :, 3, 0], flow_field[:, :, 3, 1])
+        # plt.show()
 
-    # Render gif
-    pg = PerlinGif(**args)
-    pg.render()
+    def add_particles(self):
+        # add particles at random location
+        pass
+
+    def update_positions(self):
+        # for each particle, find associated vector, apply force
+        # Make sure they wrap around the frame
+        pass
+
+    def draw_frame(self):
+        # Draw each particle as a point
+        pass
