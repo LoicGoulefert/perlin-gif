@@ -1,18 +1,48 @@
 import numpy as np
 from abc import ABC, abstractmethod
-from skimage.draw import circle
+from skimage.draw import circle, rectangle
 
 
 def circular_mask(shape):
     mask = np.zeros(shape, dtype=np.uint8)
-    rr, cc = circle(shape[0]/2, shape[1]/2, radius=shape[0] / 2, shape=shape)
+    rr, cc = circle(shape[0]/2, shape[1]/2, radius=shape[0] / 3, shape=shape)
     mask[rr, cc] = 1
     
     return mask
 
 
+def striped_mask(shape):
+    mask = np.zeros(shape, dtype=np.uint8)
+    mask[::2] = 1
+
+    return mask
+
+
+def concentric_rectangle_mask(shape, width):
+    mask = np.ones(shape, dtype=np.uint8)
+    rect = np.zeros(shape, dtype=np.uint8)
+
+    for i in range(1, int(shape[0] / (2 * width)), 2):
+        rect = np.zeros(shape, dtype=np.uint8)
+        start = (i*width, i*width)
+        end = (shape[0] - i*width, shape[1] - i*width)
+        rr, cc = rectangle(start=start, end=end, shape=mask.shape)
+        rect[rr, cc] = 1
+        mask -= rect
+
+        rect = np.zeros(shape, dtype=np.uint8)
+        start = ((i+1) * width, (i+1) * width)
+        end = (shape[0] - (i+1) * width, shape[1] - (i+1) * width)
+        rr, cc = rectangle(start=start, end=end, shape=mask.shape)
+        rect[rr, cc] = 1
+        mask += rect
+
+
+    return mask
+
+
 class AbstractProcessing(ABC):
-    """ Base class for post-processing """
+    """ Base class for post-processing. """
     @abstractmethod
     def apply(self, *args, **kwargs):
         pass
@@ -47,12 +77,33 @@ class AdjustBrightness(AbstractProcessing):
 
 
 class Mask(AbstractProcessing):
+    """ Apply a binary mask to each frame of a given 3D input. """
     def __init__(self, mask):
         self.mask = mask
     
     def apply(self, images):
-        for i in range(images.shape[0]):
-            images[i, :, :] *= self.mask
+        images *= self.mask
+
+        return images
+
+
+class Border(AbstractProcessing):
+    def __init__(self, margin, width):
+        self.margin = margin
+        self.width = width
+    
+    def apply(self, images):
+        # White border
+        images[:, self.margin:self.margin + self.width, :] = 255
+        images[:, -self.margin - self.width:-self.margin, :] = 255
+        images[:, :, self.margin:self.margin + self.width] = 255
+        images[:, :, -self.margin - self.width:-self.margin] = 255
+        
+        # Black margin
+        images[:, 0:self.margin, :] = 0
+        images[:, -self.margin:, :] = 0
+        images[:, :, 0:self.margin] = 0
+        images[:, :, -self.margin:] = 0
         
         return images
 

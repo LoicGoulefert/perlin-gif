@@ -1,7 +1,8 @@
 import argparse
+import numpy as np
 
 from perlin import PerlinGif
-from postprocessing import Pipeline, AdjustBrightness, Quantize
+from postprocessing import Pipeline, AdjustBrightness, Quantize, Border, Mask, concentric_rectangle_mask
 
 
 if __name__ == "__main__":
@@ -24,7 +25,7 @@ if __name__ == "__main__":
         assert len(args['s']) == 3, "3 dimension scale needed for 3D noise. Got {} ({}D).".format(args['s'], len(args['s']))
 
     # Create post-processing pipeline
-    pipeline = Pipeline(AdjustBrightness(gamma=0.4), Quantize(bins=16))
+    pipeline = Pipeline(AdjustBrightness(gamma=0.5), Quantize(bins=20), Border(margin=60, width=4))
     # pipeline = Pipeline()
     args['pipeline'] = pipeline
 
