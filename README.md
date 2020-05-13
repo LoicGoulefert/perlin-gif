@@ -21,9 +21,9 @@ pip install -r requirements.txt
 ## Usage
 
 ```
-python perlin.py -h
-usage: perlin.py [-h] [-d {3,4}] [-n N [N ...]] [-fps FPS] [-frames FRAMES]
-                 [-s S [S ...]] [-o {1,2,3,4}] [-r R] [-c] [-out OUT]
+python main.py -h
+usage: main.py [-h] [-d {3,4}] [-n N [N ...]] [-fps FPS] [-frames FRAMES]
+               [-s S [S ...]] [-o {1,2,3,4}] [-r R] [-c] [-out OUT] [-R]
 
 CLI tool to create perlin noise gifs
 
@@ -38,6 +38,9 @@ optional arguments:
   -r R            radius (for 4D noise)
   -c, --compress  set this flag to enable gif compression
   -out OUT        output file name (will be created)
+  -R              set this flag to use a random starting point in the noise
+                  function
+
 
 ```
 
