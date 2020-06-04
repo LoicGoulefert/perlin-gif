@@ -1,6 +1,6 @@
 import numpy as np
 from abc import ABC, abstractmethod
-from skimage.draw import circle, rectangle
+from skimage.draw import circle, rectangle, polygon
 
 
 def circular_mask(shape):
@@ -37,6 +37,16 @@ def concentric_rectangle_mask(shape, width):
         rect[rr, cc] = 1
         mask += rect
 
+
+    return mask
+
+
+def triangle_mask(shape, p1, p2, p3):
+    mask = np.zeros(shape, dtype=np.uint8)
+    r = np.array([p1[0], p2[0], p3[0]])
+    c = np.array([p1[1], p2[1], p3[1]])
+    rr, cc = polygon(r, c)
+    mask[rr, cc] = 1
 
     return mask
 

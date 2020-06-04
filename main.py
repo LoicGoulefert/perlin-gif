@@ -2,24 +2,30 @@ import argparse
 import numpy as np
 
 from perlin import PerlinGif, PerlinFlowField
-from postprocessing import Pipeline, AdjustBrightness, Quantize, Border, Mask, concentric_rectangle_mask
+from postprocessing import *
 
 
 if __name__ == "__main__":
+    size = (512, 512)
 
     gif_config = {
         "noise_dimension": 4,
-        "size": (256, 256),
+        "size": size,
         "fps": 30,
-        "frames": 30,
-        "scale": (0.01, 0.01),
+        "frames": 90,
+        "scale": (0.005, 0.005),
         "octaves": 1,
-        "radius": 0.1,
+        "radius": 0.3,
         "compression": False,
         "output_file": "out.gif",
-        "random_seed": False,
-        "pipeline": Pipeline()
-        # pipeline = Pipeline(AdjustBrightness(gamma=0.5), Quantize(bins=20), Border(margin=60, width=4))
+        "random_seed": True,
+        # "pipeline": Pipeline()
+        "pipeline": Pipeline(
+            AdjustBrightness(gamma=0.5), 
+            Quantize(bins=20),
+            # Mask(triangle_mask(size, [60, size[0] / 2], [size[0] - 60, 60], [size[0] - 60, size[0] - 60])),
+            Border(margin=60, width=4),
+        )
     }
     
     # Sanity check
