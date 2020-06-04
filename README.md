@@ -21,27 +21,38 @@ pip install -r requirements.txt
 ## Usage
 
 ```
-python main.py -h
-usage: main.py [-h] [-d {3,4}] [-n N [N ...]] [-fps FPS] [-frames FRAMES]
-               [-s S [S ...]] [-o {1,2,3,4}] [-r R] [-c] [-out OUT] [-R]
-
-CLI tool to create perlin noise gifs
-
-optional arguments:
-  -h, --help      show this help message and exit
-  -d {3,4}        noise dimension
-  -n N [N ...]    specify the gif dimension
-  -fps FPS        specify the framerate
-  -frames FRAMES  how many frames in the gif
-  -s S [S ...]    specify the scale (tuple of floats in the [0, 1] range)
-  -o {1,2,3,4}    how many octaves to use
-  -r R            radius (for 4D noise)
-  -c, --compress  set this flag to enable gif compression
-  -out OUT        output file name (will be created)
-  -R              set this flag to use a random starting point in the noise
-                  function
-
-
+python main.py
 ```
 
-For example, `python perlin.py -n 400 400 -frames 60 -fps 60 --compress` will yield a 400x400 compressed gif, 1 second at 60FPS.
+You can configure various parameters for the gif creation. Here's an example (see main.py):
+
+```
+gif_config = {
+    "noise_dimension": 4,  # Can be either 3 or 4
+    "size": size,  # Size of the output gif
+    "fps": 30,
+    "frames": 90,
+    "scale": (0.005, 0.005),  # Scale of the perlin noise
+    "octaves": 1,
+    "radius": 0.3,  # Increase to 'speed up' the gif
+    "compression": False,
+    "output_file": "out.gif",
+    "random_seed": True,
+    "pipeline": Pipeline()  # Post processing operations
+}
+```
+
+
+## Output example
+
+- No postprocessing
+
+![No postprocessing](gallery/no-postprocessing.gif)
+
+- Border, quantize, brightness correction
+
+![Border, quantize, brightness correction](gallery/border.gif)
+
+- Border, quantize, triangle mask
+
+![Border, quantize, triangle mask](gallery/triangle.gif)
