@@ -1,6 +1,8 @@
+# Standard libs
 import math
 import argparse
 
+# Third-party libs
 import imageio
 import numpy as np
 from noise import snoise2, snoise3, snoise4
@@ -15,14 +17,14 @@ def _simplex_noise3d(shape, scale, octaves, random):
         offset = np.random.rand() * 100
     else:
         offset = 0
-    
+
     for x in range(shape[0]):
         for y in range(shape[1]):
             for z in range(shape[2]):
                 img[x, y, z] = snoise3(x * scale[0] + offset, y * scale[1] + offset, z * scale[2], octaves=octaves)
-    
+
     img = ((img - img.min()) * (1 / (img.max() - img.min()) * 255)).astype('uint8')
-    
+
     return img
 
 
@@ -40,9 +42,9 @@ def _simplex_noise4d(shape, scale, octaves, radius, random):
         for x in range(shape[0]):
             for y in range(shape[1]):
                 img[x, y, i] = snoise4(x * scale[0] + offset, y * scale[1] + offset, cos_value, sin_value)
-    
+
     img = ((img - img.min()) * (1 / (img.max() - img.min()) * 255)).astype('uint8')
-    
+
     return img
 
 
@@ -107,37 +109,18 @@ class PerlinFlowField():
         self.random = config["random_seed"]
         self.shape = (*self.size, self.frames)
         self.images = np.zeros(self.shape)
+    
+    def get_force(self, x, y, t):
+        cos_value = self.radius * math.cos(2 * math.pi * (t / self.shape[2]))
+        sin_value = self.radius * math.sin(2 * math.pi * (t / self.shape[2]))
+        angle = snoise4(x * self.scale[0], y * self.scale[1], cos_value, sin_value)
 
-    def create_flow_field(self):
-        flow_field = np.zeros((*self.shape, 2)) # if 256, 256, 30 -> 256, 256, 30, 2
-
-        for i in range(self.shape[2]):
-            cos_value = self.radius * math.cos(2 * math.pi * (i / self.shape[2]))
-            sin_value = self.radius * math.sin(2 * math.pi * (i / self.shape[2]))
-            for x in range(self.shape[0]):
-                for y in range(self.shape[1]):
-                    angle = snoise4(x * self.scale[0], y * self.scale[1], cos_value, sin_value)
-                    flow_field[x, y, i, 0] = np.cos(angle) * 2
-                    flow_field[x, y, i, 1] = np.sin(angle) * 2
-       
-        # x, y = np.meshgrid(np.arange(0, shape[0]*scale[0], scale[0]), np.arange(0, shape[1]*scale[1], scale[1]))
-        # u, v = flow_field[:, :, 0, 0], flow_field[:, :, 0, 1]
-
-        # figs, axs = plt.subplots(2, 2)
-        # axs[0][0].quiver(x, y, flow_field[:, :, 0, 0] * -1, flow_field[:, :, 0, 1] * -1)
-        # axs[0][1].quiver(x, y, flow_field[:, :, 1, 0], flow_field[:, :, 1, 1])
-        # axs[1][0].quiver(x, y, flow_field[:, :, 2, 0], flow_field[:, :, 2, 1])
-        # axs[1][1].quiver(x, y, flow_field[:, :, 3, 0], flow_field[:, :, 3, 1])
-        # plt.show()
-        self.flow_field = flow_field
-
-        return self.flow_field
+        return Vec2D(np.cos(angle) * 2, np.sin(angle) * 2)
 
     def add_particles(self, n_particles):
-        # add particles at random location along the y=0 axis
         self.particles = []
         rand_x = np.random.randint(0, self.shape[0], size=n_particles)
-        rand_y = np.random.randint(0, self.shape[0], size=n_particles)
+        rand_y = np.random.randint(0, self.shape[1], size=n_particles)
 
         for x, y in zip(rand_x, rand_y):
             pos = Vec2D(x, y)
@@ -145,39 +128,40 @@ class PerlinFlowField():
             acc = Vec2D(0, 0)
             self.particles.append(Particle(pos, vel, acc))
 
-    def update_particles(self):        
-        # for each particle, find associated vector, apply force
+    def _update_particle(self, particle, i):
+        x = int(round(particle.pos.x))
+        y = int(round(particle.pos.y))
+        if x == self.size[0]:
+            x -= 1
+        if y == self.size[1]:
+            y -= 1
+
+        force = self.get_force(x, y, i)
+        particle.apply(force)
+
+        # Wrap particle around frame
+        if particle.pos.x > self.shape[0]:
+            particle.pos.x = 0
+        if particle.pos.x < 0:
+            particle.pos.x = self.shape[0] - 1
+        if particle.pos.y > self.shape[1]:
+            particle.pos.y = 0
+        if particle.pos.y < 0:
+            particle.pos.y = self.shape[1] - 1
+
+    def update_particles(self):
         for i in range(self.frames):
             for particle in self.particles:
-                x = int(round(particle.pos.x))
-                y = int(round(particle.pos.y))
-                if x == self.size[0]:
-                    x -= 1
-                if y == self.size[1]:
-                    y -= 1
-
-                force = Vec2D(*self.flow_field[x, y, i, :])
-                particle.apply(force)
-
-                # Wrap particle around frame
-                if particle.pos.x > self.shape[0]:
-                    particle.pos.x = 0
-                if particle.pos.x < 0:
-                    particle.pos.x = self.shape[0] - 1
-                if particle.pos.y > self.shape[1]:
-                    particle.pos.y = 0
-                if particle.pos.y < 0:
-                    particle.pos.y = self.shape[1] - 1
-            
+                self._update_particle(particle, i)
             self._draw_frame(i)
+
         self.images = ((self.images - self.images.min()) * (1 / (self.images.max() - self.images.min()) * 255)).astype('uint8')
 
     def _draw_frame(self, index):
         for particle in self.particles:
             self.images[int(particle.pos.x), int(particle.pos.y), index] = 1
-    
+
     def render(self, n_particles=100):
-        self.create_flow_field()
         self.add_particles(n_particles)
         self.update_particles()
         self.images = self.images.transpose(2, 0, 1)
@@ -204,7 +188,7 @@ class Particle():
     def apply(self, force):
         self.acceleration += force
         self.update()
-    
+
     def __repr__(self):
         return f"Particle(pos={self.pos}, vel={self.velocity}, acc={self.acceleration})"
 
@@ -218,7 +202,7 @@ class Vec2D():
         self.x += other.x
         self.y += other.y
         return self
-    
+
     def __repr__(self):
         return f"Vec2D(x={self.x}, y={self.y})"
 
