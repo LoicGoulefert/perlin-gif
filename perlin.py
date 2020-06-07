@@ -94,25 +94,22 @@ class PerlinGif():
 
 
 class PerlinFlowField():
-    def __init__(self, **kwargs):
-        self.noise_dim = kwargs["d"]
-        self.n = kwargs["n"]
-        self.fps = kwargs["fps"]
-        self.frames = kwargs["frames"]
-        self.scale = kwargs["s"]
-        self.octaves = kwargs["o"]
-        self.radius = kwargs["r"]
-        self.compress = kwargs["compress"]
-        self.output_file = kwargs["out"]
-        self.pipeline = kwargs["pipeline"]
-        self.random = kwargs["R"]
-        self.shape = (*self.n, self.frames)
+    def __init__(self, **config):
+        self.noise_dimension = config["noise_dimension"]
+        self.size = config["size"]
+        self.fps = config["fps"]
+        self.frames = config["frames"]
+        self.scale = config["scale"]
+        self.radius = config["radius"]
+        self.compression = config["compression"]
+        self.output_file = config["output_file"]
+        self.pipeline = config["pipeline"]
+        self.random = config["random_seed"]
+        self.shape = (*self.size, self.frames)
         self.images = np.zeros(self.shape)
 
-    def flow_field(self):
+    def create_flow_field(self):
         flow_field = np.zeros((*self.shape, 2)) # if 256, 256, 30 -> 256, 256, 30, 2
-        radius = 0.1
-        scale = (0.1, 0.1)
 
         for i in range(self.shape[2]):
             cos_value = self.radius * math.cos(2 * math.pi * (i / self.shape[2]))
@@ -120,8 +117,8 @@ class PerlinFlowField():
             for x in range(self.shape[0]):
                 for y in range(self.shape[1]):
                     angle = snoise4(x * self.scale[0], y * self.scale[1], cos_value, sin_value)
-                    flow_field[x, y, i, 0] = np.cos(angle) * 10
-                    flow_field[x, y, i, 1] = np.sin(angle) * 10
+                    flow_field[x, y, i, 0] = np.cos(angle) * 2
+                    flow_field[x, y, i, 1] = np.sin(angle) * 2
        
         # x, y = np.meshgrid(np.arange(0, shape[0]*scale[0], scale[0]), np.arange(0, shape[1]*scale[1], scale[1]))
         # u, v = flow_field[:, :, 0, 0], flow_field[:, :, 0, 1]
@@ -140,8 +137,10 @@ class PerlinFlowField():
         # add particles at random location along the y=0 axis
         self.particles = []
         rand_x = np.random.randint(0, self.shape[0], size=n_particles)
-        for x in rand_x:
-            pos = Vec2D(x, 0)
+        rand_y = np.random.randint(0, self.shape[0], size=n_particles)
+
+        for x, y in zip(rand_x, rand_y):
+            pos = Vec2D(x, y)
             vel = Vec2D(0, 0)
             acc = Vec2D(0, 0)
             self.particles.append(Particle(pos, vel, acc))
@@ -150,7 +149,14 @@ class PerlinFlowField():
         # for each particle, find associated vector, apply force
         for i in range(self.frames):
             for particle in self.particles:
-                force = Vec2D(*self.flow_field[round(particle.pos.x), round(particle.pos.y), i, :])
+                x = int(round(particle.pos.x))
+                y = int(round(particle.pos.y))
+                if x == self.size[0]:
+                    x -= 1
+                if y == self.size[1]:
+                    y -= 1
+
+                force = Vec2D(*self.flow_field[x, y, i, :])
                 particle.apply(force)
 
                 # Wrap particle around frame
@@ -168,34 +174,36 @@ class PerlinFlowField():
 
     def _draw_frame(self, index):
         for particle in self.particles:
-            x = particle.pos.x
-            y = particle.pos.y
-            self.images[x, y, index] = 1
+            self.images[int(particle.pos.x), int(particle.pos.y), index] = 1
     
-    def render(self):
-        pass
+    def render(self, n_particles=100):
+        self.create_flow_field()
+        self.add_particles(n_particles)
+        self.update_particles()
+        self.images = self.images.transpose(2, 0, 1)
 
-    def _to_gif(self):
-        kwargs = {'duration': 1 / self.fps}
-        imageio.mimsave(self.output_file, self.images, **kwargs)
-        if self.compress:
-            optimize(self.output_file)
+        if not self.pipeline.is_empty():
+            print("Running pipeline")
+            self.images = self.pipeline.run(self.images)
+
+        _to_gif(self.images, self.fps, self.output_file, self.compression)
 
 
 class Particle():
     def __init__(self, pos, velocity, acceleration):
-        self.pos = Vec2D(0, 0)
+        self.pos = pos
         self.velocity = Vec2D(0, 0)
         self.acceleration = Vec2D(0, 0)
 
     def update(self):
         self.velocity += self.acceleration
-        self.position += self.velocity
+        self.pos += self.velocity
         self.acceleration.reset()
+        self.velocity.reset()
 
     def apply(self, force):
-        print("Acc =", self.acceleration)
         self.acceleration += force
+        self.update()
     
     def __repr__(self):
         return f"Particle(pos={self.pos}, vel={self.velocity}, acc={self.acceleration})"
@@ -209,6 +217,7 @@ class Vec2D():
     def __add__(self, other):
         self.x += other.x
         self.y += other.y
+        return self
     
     def __repr__(self):
         return f"Vec2D(x={self.x}, y={self.y})"
