@@ -55,4 +55,8 @@ gif_config = {
 
 - Border, quantize, triangle mask
 
-![Border, quantize, triangle mask](gallery/triangle.gif)
+![Quantize, triangle mask, brightness correction](gallery/triangle.gif)
+
+- Particles in a perlin flowfield
+
+![Perlin flow field](gallery/perlin-flow-field.gif)
