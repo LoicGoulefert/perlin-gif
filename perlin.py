@@ -8,9 +8,12 @@ import numpy as np
 from noise import snoise2, snoise3, snoise4
 from pygifsicle import optimize
 import matplotlib.pyplot as plt
+from skimage.draw import circle_perimeter, line
+from scipy.spatial import Voronoi
 
 
 def _simplex_noise3d(shape, scale, octaves, random):
+    """Return a sequence of images representing 3D simplex noise."""
     img = np.zeros(shape)
 
     if random:
@@ -29,6 +32,7 @@ def _simplex_noise3d(shape, scale, octaves, random):
 
 
 def _simplex_noise4d(shape, scale, octaves, radius, random):
+    """Returns a sequence of images representing 4D (looping) simplex noise."""
     img = np.zeros(shape)
 
     if random:
@@ -49,6 +53,7 @@ def _simplex_noise4d(shape, scale, octaves, radius, random):
 
 
 def _to_gif(images, fps, output_file, compression):
+    """Convert a sequence of images to a gif."""
     kwargs = {'duration': 1 / fps}
     imageio.mimsave(output_file, images, **kwargs)
     if compression:
@@ -110,14 +115,14 @@ class PerlinFlowField():
         self.shape = (*self.size, self.frames)
         self.images = np.zeros(self.shape)
     
-    def get_force(self, x, y, t):
-        cos_value = self.radius * math.cos(2 * math.pi * (t / self.shape[2]))
-        sin_value = self.radius * math.sin(2 * math.pi * (t / self.shape[2]))
+    def _get_force(self, x, y, t, magnitude=1):
+        cos_value = self.radius * math.cos(2 * math.pi * t)
+        sin_value = self.radius * math.sin(2 * math.pi * t)
         angle = snoise4(x * self.scale[0], y * self.scale[1], cos_value, sin_value)
 
-        return Vec2D(np.cos(angle) * 2, np.sin(angle) * 2)
+        return Vec2D(np.cos(angle) * magnitude, np.sin(angle) * magnitude)
 
-    def add_particles(self, n_particles):
+    def _add_particles(self, n_particles):
         self.particles = []
         rand_x = np.random.randint(0, self.shape[0], size=n_particles)
         rand_y = np.random.randint(0, self.shape[1], size=n_particles)
@@ -136,7 +141,7 @@ class PerlinFlowField():
         if y == self.size[1]:
             y -= 1
 
-        force = self.get_force(x, y, i)
+        force = self.get_force(x, y, i, magnitude=3)
         particle.apply(force)
 
         # Wrap particle around frame
@@ -149,17 +154,24 @@ class PerlinFlowField():
         if particle.pos.y < 0:
             particle.pos.y = self.shape[1] - 1
 
+    def _draw_frame(self, index):
+        for particle in self.particles:
+            self.images[int(particle.pos.x), int(particle.pos.y), index] = 1
+
+            # Circle particles
+            # rr, cc = circle_perimeter(int(particle.pos.x), int(particle.pos.y), 2)
+            # rr = [r if r < self.shape[0]  else self.shape[0] - 1 for r in rr]
+            # cc = [c if c < self.shape[1] else self.shape[1] - 1 for c in cc]
+            # self.images[rr, cc, index] = 1
+
     def update_particles(self):
         for i in range(self.frames):
             for particle in self.particles:
                 self._update_particle(particle, i)
+
             self._draw_frame(i)
 
         self.images = ((self.images - self.images.min()) * (1 / (self.images.max() - self.images.min()) * 255)).astype('uint8')
-
-    def _draw_frame(self, index):
-        for particle in self.particles:
-            self.images[int(particle.pos.x), int(particle.pos.y), index] = 1
 
     def render(self, n_particles=100):
         self.add_particles(n_particles)

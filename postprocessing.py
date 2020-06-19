@@ -1,5 +1,8 @@
-import numpy as np
+# Standard libs
 from abc import ABC, abstractmethod
+
+# Third-party libs
+import numpy as np
 from skimage.draw import circle, rectangle, polygon
 
 
@@ -65,7 +68,6 @@ class Quantize(AbstractProcessing):
 
     def apply(self, images):
         w = images.max() / self.bins
-
         for i in range(images.shape[0]):
             images[i, :, :] -= (images[i, :, :] - (images[i, :, :] // w) * w).astype('uint8')
 
@@ -98,6 +100,7 @@ class Mask(AbstractProcessing):
 
 
 class Border(AbstractProcessing):
+    """ Draw a white border, with a black margin on each frame """
     def __init__(self, margin, width):
         self.margin = margin
         self.width = width
@@ -115,20 +118,6 @@ class Border(AbstractProcessing):
         images[:, :, 0:self.margin] = 0
         images[:, :, -self.margin:] = 0
         
-        return images
-
-
-class FromFunction(AbstractProcessing):
-    """ Not tested, not fully compatible yet. """
-    def __init__(self, fn=None, *args, **kwargs):
-        self.fn = fn
-        self.args = args
-        self.kwargs = kwargs
-    
-    def apply(self, images):
-        for i in range(images.shape[0]):
-            images[i, :, :] = self.fn(images[i, :, :], *self.args, **self.kwargs)
-
         return images
 
 

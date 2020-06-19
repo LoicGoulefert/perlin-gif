@@ -1,25 +1,21 @@
-import argparse
-import numpy as np
-
 from perlin import PerlinGif, PerlinFlowField
 from postprocessing import *
 
 
 if __name__ == "__main__":
-    size = (256, 256)
+    size = (512, 512)
 
     gif_config = {
         "noise_dimension": 4,
         "size": size,
         "fps": 30,
-        "frames": 360,
-        "scale": (0.01, 0.01),
+        "frames": 180,
+        "scale": (0.02, 0.02),
         "octaves": 1,
         "radius": 0.5,
         "compression": False,
         "output_file": "out.gif",
         "random_seed": True,
-        # "pipeline": Pipeline()
         "pipeline": Pipeline(
             # AdjustBrightness(gamma=0.5), 
             # Quantize(bins=20),
@@ -33,7 +29,10 @@ if __name__ == "__main__":
         assert len(gif_config['scale']) == 3, \
         "3 dimension scale needed for 3D noise. Got {} ({}D).".format(gif_config['scale'], len(gif_config['scale']))
 
-    # Render gif
+    # Perlin noise gif
     # pg = PerlinGif(**gif_config)
+    # pg.render()
+    
+    # Perlin flow-field gif
     pg = PerlinFlowField(**gif_config)
-    pg.render(n_particles=1000)
+    pg.render(n_particles=2000)
