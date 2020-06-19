@@ -141,7 +141,7 @@ class PerlinFlowField():
         if y == self.size[1]:
             y -= 1
 
-        force = self.get_force(x, y, i, magnitude=3)
+        force = self._get_force(x, y, i, magnitude=3)
         particle.apply(force)
 
         # Wrap particle around frame
@@ -174,7 +174,7 @@ class PerlinFlowField():
         self.images = ((self.images - self.images.min()) * (1 / (self.images.max() - self.images.min()) * 255)).astype('uint8')
 
     def render(self, n_particles=100):
-        self.add_particles(n_particles)
+        self._add_particles(n_particles)
         self.update_particles()
         self.images = self.images.transpose(2, 0, 1)
 
