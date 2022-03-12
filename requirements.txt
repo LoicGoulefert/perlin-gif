@@ -7,7 +7,7 @@ matplotlib==3.2.1
 networkx==2.4
 noise==1.2.2
 numpy==1.18.2
-Pillow==8.3.2
+Pillow==9.0.1
 pygifsicle==1.0.1
 pyparsing==2.4.7
 python-dateutil==2.8.1
